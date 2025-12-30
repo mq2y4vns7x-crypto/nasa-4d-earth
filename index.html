@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NASA_ONEARTH_LIVE_STREAM</title>
+    <title>NASA_SYSTEM_RECOVERY</title>
     <script src="https://unpkg.com/three"></script>
     <script src="https://unpkg.com/three-globe"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
@@ -15,20 +15,32 @@
             justify-content: center; align-items: center; z-index: 1000;
         }
 
-        /* The spinning data numbers */
-        #data-stream { font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #4af; text-shadow: 0 0 8px #4af; }
-        #status-text { font-size: 10px; margin-top: 15px; letter-spacing: 3px; opacity: 0.8; }
-        
-        #bar-bg { width: 300px; height: 1px; background: #111; margin-top: 20px; position: relative; }
-        #bar-fill { width: 0%; height: 100%; background: #4af; box-shadow: 0 0 15px #4af; }
+        /* High-speed mutating numbers */
+        #data-buffer { 
+            font-size: 32px; 
+            font-weight: bold; 
+            letter-spacing: 8px; 
+            color: #4af; 
+            text-shadow: 0 0 10px rgba(68, 170, 255, 0.7); 
+        }
+
+        #status-bar { 
+            font-size: 10px; 
+            margin-top: 20px; 
+            color: #265; /* Dimmer green for sub-text */
+            letter-spacing: 2px;
+        }
+
+        #progress-line { width: 300px; height: 1px; background: #111; margin-top: 30px; }
+        #fill { width: 0%; height: 100%; background: #4af; transition: width 0.05s; }
     </style>
 </head>
 <body>
 
     <div id="loader">
-        <div id="data-stream">000000000000</div>
-        <div id="status-text">SYNCING_WITH_GIBS_NODES...</div>
-        <div id="bar-bg"><div id="bar-fill"></div></div>
+        <div id="data-buffer">000000000000</div>
+        <div id="status-bar">BITSTREAM_RECOVERY_IN_PROGRESS...</div>
+        <div id="progress-line"><div id="fill"></div></div>
     </div>
 
     <div id="globeViz"></div>
@@ -38,51 +50,55 @@
         
         let cycles = 0;
         const max = 100;
-        const stream = document.getElementById('data-stream');
-        const status = document.getElementById('status-text');
-        const bar = document.getElementById('bar-fill');
+        const buffer = document.getElementById('data-buffer');
+        const status = document.getElementById('status-bar');
+        const bar = document.getElementById('fill');
 
-        // THE 100Hz UPDATE LOOP
-        const liveLoop = setInterval(() => {
+        // HYPER-LOOP: 100 UPDATES PER SECOND
+        const hyperLoop = setInterval(() => {
             cycles++;
 
-            // Update the "00000" stream with random numbers that slowly lock in
-            let randomNoise = Math.floor(Math.random() * 999999999999).toString().padStart(12, '0');
-            stream.innerText = randomNoise;
+            // Update the mutating string
+            // It generates 12 random digits every 10ms
+            let stream = "";
+            for(let i=0; i<12; i++) {
+                stream += Math.floor(Math.random() * 10);
+            }
+            buffer.innerText = stream;
             
             bar.style.width = cycles + '%';
 
-            // TRIGGER ENGINE UPDATES
-            if (cycles === 20) {
-                status.innerText = "INJECTING_WMTS_TILE_SERVICE...";
+            // ATTEMPT OVERLAYS & COMBINATIONS
+            if (cycles === 15) {
+                status.innerText = "LAYER_01: INJECTING_GIBS_TILE_SERVICE";
                 World.globeTileEngineUrl((x, y, l) => 
                     `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/500m/${l}/${y}/${x}.jpg`
                 );
             }
             
-            if (cycles === 50) {
-                status.innerText = "COMBINING_SATELLITE_RELIEF_MAPS...";
+            if (cycles === 45) {
+                status.innerText = "LAYER_02: COMBINING_TOPOLOGY_HEIGHT_MAPS";
                 World.bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png');
             }
 
-            if (cycles === 80) {
-                status.innerText = "RESTORING_TRUE_COLOR_BALANCE...";
+            if (cycles === 75) {
+                status.innerText = "LAYER_03: STITCHING_BLUE_MARBLE_TRUECOLOR";
                 World.globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
             }
 
             if (cycles >= max) {
-                clearInterval(liveLoop);
-                stream.innerText = "CONNECTION_STABLE";
-                status.innerText = "LOGGED_IN_TO_NASA_GIBS";
+                clearInterval(hyperLoop);
+                buffer.innerText = "LINK_SECURED";
+                status.innerText = "NASA_GIBS_STREAM_STABLE";
                 
                 setTimeout(() => {
                     document.getElementById('loader').style.opacity = '0';
                     setTimeout(() => document.getElementById('loader').remove(), 500);
-                }, 400);
+                }, 300);
             }
-        }, 10); // 10ms = 100 updates per second
+        }, 10); // 10ms = 100Hz
 
-        // Scene Logic
+        // 3D Scene Initialization
         const scene = new THREE.Scene();
         scene.add(World);
         scene.add(new THREE.AmbientLight(0xffffff, 1.2));
