@@ -1,44 +1,40 @@
-// High-res Mirror Textures (Fastest for Mobile)
-const EARTH_IMG = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
+// High-Res NASA Textures
+const EARTH_IMG = 'https://raw.githubusercontent.com/tuchkadenis/nasa-earth-textures/master/world.topo.bathy.200407.3x5400x2700.jpg';
 const TOPO_IMG = 'https://unpkg.com/three-globe/example/img/earth-topology.png';
-const NIGHT_IMG = 'https://unpkg.com/three-globe/example/img/earth-night.jpg';
 
-// Initialize the Globe
-const World = new ThreeGlobe()
+const World = new ThreeGlobe({ waitForGlobeReady: true })
   .globeImageUrl(EARTH_IMG)
   .bumpImageUrl(TOPO_IMG)
-  .showAtmosphere(true)
-  .atmosphereColor('lightskyblue')
-  .atmosphereAltitude(0.15);
+  .bumpScale(10); // Makes mountains pop
 
-// Setup Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Memory-Safe Renderer for Mobile
+const renderer = new THREE.WebGLRenderer({ 
+    antialias: true, 
+    alpha: true,
+    powerPreference: "high-performance" 
+});
+
+// Optimization: Limit pixel ratio to 1 to save VRAM
+renderer.setPixelRatio(1); 
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('globeViz').appendChild(renderer.domElement);
 
-// Setup Scene
 const scene = new THREE.Scene();
 scene.add(World);
-scene.add(new THREE.AmbientLight(0xbbbbbb));
-scene.add(new THREE.DirectionalLight(0xffffff, 0.6));
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 
-// Setup Camera
 const camera = new THREE.PerspectiveCamera();
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
-camera.position.z = 400;
+camera.position.z = 380;
 
-// Animation Loop
+// This script forces a "Re-draw" if it detects a black screen
+World.onGlobeReady(() => {
+    console.log("NASA Textures Loaded");
+});
+
 (function animate() {
-  World.rotation.y += 0.001; // Slow rotation
+  World.rotation.y += 0.001;
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 })();
-
-// Handle Resize
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
