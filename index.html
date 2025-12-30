@@ -2,10 +2,10 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NASA 4D</title>
-    <script src="https://unpkg.com/three"></script>
-    <script src="https://unpkg.com/three-globe"></script>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three-globe@2.31.0/dist/three-globe.min.js"></script>
     <style>
         body { margin: 0; background-color: #000; overflow: hidden; }
         #globeViz { width: 100vw; height: 100vh; }
@@ -15,27 +15,26 @@
     <div id="globeViz"></div>
 
     <script>
-        // The Robot will replace this string with your real secret!
+        // The Robot swaps this line
         const API_KEY = 'REPLACE_ME_WITH_KEY';
 
-        // Choose the best image (NASA high-res or basic backup)
-        const globeImage = (API_KEY !== 'REPLACE_ME_WITH_KEY') 
-            ? 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg' 
-            : 'https://unpkg.com/three-globe/example/img/earth-night.jpg';
-
         function init() {
-            const World = new ThreeGlobe()
-                .globeImageUrl(globeImage)
-                .showAtmosphere(true)
-                .atmosphereColor('#87CEEB');
+            // High-res texture
+            const img = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('globeViz').appendChild(renderer.domElement);
+            const World = new ThreeGlobe()
+                .globeImageUrl(img)
+                .showAtmosphere(true)
+                .atmosphereColor('#3a228a');
 
             const scene = new THREE.Scene();
             scene.add(World);
-            scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+            scene.add(new THREE.AmbientLight(0xffffff, 2));
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('globeViz').appendChild(renderer.domElement);
 
             const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
             camera.position.z = 350;
@@ -48,7 +47,8 @@
             animate();
         }
 
-        window.onload = init;
+        // Wait for everything to load before starting
+        window.addEventListener('load', init);
     </script>
 </body>
 </html>
