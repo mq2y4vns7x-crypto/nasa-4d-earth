@@ -2,65 +2,57 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NASA 4D</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three-globe@2.31.0/dist/three-globe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
     <style>
-        body { margin: 0; background-color: #ffffff; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-        #globeViz { width: 100vw; height: 100vh; position: absolute; }
-        #status { font-family: sans-serif; z-index: 10; color: #666; }
+        body { margin: 0; background-color: #ffffff; overflow: hidden; }
+        #globeViz { width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
-    <div id="status">Connecting to NASA...</div>
     <div id="globeViz"></div>
 
     <script>
-        // High-speed NASA image link
         const EARTH_IMG = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
 
         function startApp() {
-            try {
-                // Check if the library is actually loaded
-                if (typeof ThreeGlobe === 'undefined') {
-                    document.getElementById('status').innerText = "Library Loading Error. Refreshing...";
-                    setTimeout(() => location.reload(), 2000);
-                    return;
-                }
+            const World = new ThreeGlobe()
+                .globeImageUrl(EARTH_IMG)
+                .showAtmosphere(true)
+                .atmosphereColor('#87CEEB');
 
-                const World = new ThreeGlobe()
-                    .globeImageUrl(EARTH_IMG)
-                    .showAtmosphere(true)
-                    .atmosphereColor('#87CEEB');
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('globeViz').appendChild(renderer.domElement);
 
-                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                renderer.setPixelRatio(window.devicePixelRatio);
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                document.getElementById('globeViz').appendChild(renderer.domElement);
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+            scene.add(World);
+            scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 
-                const scene = new THREE.Scene();
-                scene.background = new THREE.Color(0xffffff);
-                scene.add(World);
-                scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            // Move camera down slightly and closer (z=250 instead of 400)
+            camera.position.set(0, -20, 280); 
 
-                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                camera.position.z = 400;
+            // Enable Zoom and Rotation for Mobile
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.8;
+            controls.zoomSpeed = 1.2;
 
-                function animate() {
-                    World.rotation.y += 0.001;
-                    renderer.render(scene, camera);
-                    requestAnimationFrame(animate);
-                    document.getElementById('status').style.display = 'none';
-                }
-                animate();
-
-            } catch (err) {
-                document.getElementById('status').innerText = "Error: " + err.message;
+            function animate() {
+                controls.update(); // Update the zoom/touch position
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
             }
+            animate();
         }
 
-        // Wait for the window and libraries to be fully ready
         window.onload = startApp;
     </script>
 </body>
