@@ -1,0 +1,27 @@
+name: Deploy
+on:
+  push:
+    branches: [main, master] # Works whether your branch is called main or master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Swap Key
+        run: |
+          sed -i "s/REPLACE_ME_WITH_KEY/${{ secrets.NASA_API_KEY }}/g" index.html
+          
+      - name: Upload
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+          
+      - name: Deploy
+        uses: actions/deploy-pages@v4
