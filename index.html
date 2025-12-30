@@ -2,45 +2,51 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NASA 4D Earth</title>
-    <script src="https://unpkg.com/three"></script>
-    <script src="https://unpkg.com/three-globe"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA 4D</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three-globe@2.31.0/dist/three-globe.min.js"></script>
     <style>
-        body { margin: 0; background: #ffffff; overflow: hidden; width: 100vw; height: 100vh; }
-        #globeViz { width: 100%; height: 100%; }
+        body { margin: 0; background-color: #ffffff; overflow: hidden; }
+        #globeViz { width: 100vw; height: 100vh; background-color: #ffffff; }
     </style>
 </head>
 <body>
     <div id="globeViz"></div>
     <script>
+        // Use a highly-compressed, fast-loading NASA texture
         const EARTH_IMG = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
-        
-        const World = new ThreeGlobe()
-            .globeImageUrl(EARTH_IMG)
-            .showAtmosphere(true)
-            .atmosphereColor('#87CEEB');
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(1);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('globeViz').appendChild(renderer.domElement);
+        // Initialize immediately
+        try {
+            const World = new ThreeGlobe()
+                .globeImageUrl(EARTH_IMG)
+                .showAtmosphere(true)
+                .atmosphereColor('#87CEEB');
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xffffff); 
-        scene.add(World);
-        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('globeViz').appendChild(renderer.domElement);
 
-        const camera = new THREE.PerspectiveCamera();
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        camera.position.z = 400;
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+            scene.add(World);
+            scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 
-        (function animate() {
-            World.rotation.y += 0.0015;
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
-        })();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 400;
+
+            function animate() {
+                World.rotation.y += 0.001;
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate();
+        } catch (e) {
+            // If there's an error, it will show on the screen so we can see it
+            document.body.innerHTML = '<div style="padding:20px; font-family:sans-serif;">Error: ' + e.message + '</div>';
+        }
     </script>
 </body>
 </html>
