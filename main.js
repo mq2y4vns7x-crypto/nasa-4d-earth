@@ -1,143 +1,93 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NASA 4D: OnEarth Engine</title>
+// --- 1. CORE CONFIGURATION ---
+// These are the "OnEarth" layers from NASA's official repositories
+const NASA_LAYERS = {
+    tiles: (x, y, l) => `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/500m/${l}/${y}/${x}.jpg`,
+    topology: 'https://unpkg.com/three-globe/example/img/earth-topology.png',
+    fallback: 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'
+};
+
+// --- 2. INITIALIZE 3D ENVIRONMENT ---
+const World = new ThreeGlobe()
+    .showAtmosphere(true)
+    .atmosphereColor('#4af')
+    .atmosphereDayLightIntensity(1.5);
+
+const scene = new THREE.Scene();
+scene.add(World);
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('globeViz').appendChild(renderer.domElement);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+camera.position.z = 400;
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+// --- 3. THE 100Hz HYPER-LOADER (The "000000" Logic) ---
+let cycleCount = 0;
+const MAX_CYCLES = 100;
+const streamEl = document.getElementById('stream');
+const barEl = document.getElementById('progress-bar');
+const statusEl = document.getElementById('status');
+
+// This runs every 10 milliseconds (100 times per second)
+const rapidAccess = setInterval(() => {
+    cycleCount++;
+
+    // UPDATE NUMBERS: Creates a 14-digit random string that mutates 100x a second
+    const dataStream = Math.random().toString().substring(2, 16).padStart(14, '0');
+    streamEl.innerText = dataStream;
     
-    <script src="https://unpkg.com/three"></script>
-    <script src="https://unpkg.com/three-globe"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    // UPDATE BAR
+    barEl.style.width = `${cycleCount}%`;
 
-    <style>
-        /* CSS: MISSION CONTROL UI */
-        body { 
-            margin: 0; 
-            background: radial-gradient(circle at center, #001529 0%, #000 100%); 
-            overflow: hidden; 
-            color: #4af;
-            font-family: 'Courier New', Courier, monospace;
-        }
+    // LAYER COMBINATION TRIGGERS
+    if (cycleCount === 10) {
+        statusEl.innerText = "REQUESTING_GIBS_DATA_STREAM...";
+        World.globeTileEngineUrl(NASA_LAYERS.tiles);
+    }
+    
+    if (cycleCount === 40) {
+        statusEl.innerText = "MERGING_TOPOLOGY_HEIGHTMAPS...";
+        World.bumpImageUrl(NASA_LAYERS.topology);
+    }
 
-        #ui-layer {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none;
-            z-index: 10;
-        }
+    if (cycleCount === 75) {
+        statusEl.innerText = "INJECTING_BLUE_MARBLE_TRUECOLOR...";
+        // If tiles fail, this layer ensures the Earth is visible
+        World.globeImageUrl(NASA_LAYERS.fallback);
+    }
 
-        .label { font-size: 10px; opacity: 0.7; letter-spacing: 2px; }
-        .value { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+    if (cycleCount >= MAX_CYCLES) {
+        clearInterval(rapidAccess);
+        streamEl.innerText = "CONNECTION_STABLE";
+        statusEl.innerText = "NASA_GIBS_v2_ACTIVE";
+        
+        // Final fade out of the loader
+        setTimeout(() => {
+            document.getElementById('loader').style.opacity = '0';
+            setTimeout(() => document.getElementById('loader').remove(), 600);
+        }, 300);
+    }
+}, 10); 
 
-        #loader {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            transition: opacity 1.5s ease;
-        }
+// --- 4. ANIMATION LOOP ---
+const animate = () => {
+    World.rotation.y += 0.0012; // The slow "4D" spin
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+};
 
-        .spinner {
-            width: 40px; height: 40px;
-            border: 2px solid #4af;
-            border-top: 2px solid transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
+animate();
 
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    </style>
-</head>
-<body>
-
-    <div id="ui-layer">
-        <div class="label">MISSION_DATA_FEED</div>
-        <div class="value">NASA GIBS / ONEARTH</div>
-        <div class="label">COORD_SYSTEM</div>
-        <div class="value">EPSG:4326 (GEO)</div>
-        <div class="label">ENGINE_STATUS</div>
-        <div class="value" id="status">CONNECTING...</div>
-    </div>
-
-    <div id="loader">
-        <div class="spinner"></div>
-        <div>STITCHING NASA TILES...</div>
-    </div>
-
-    <div id="globeViz"></div>
-
-    <script>
-        // JS: 4D ENGINE LOGIC
-        const World = new ThreeGlobe()
-            // THE TILE ENGINE: This is the "OnEarth" logic from NASA's GitHub
-            // It replaces {l}/{y}/{x} with zoom, row, and column automatically
-            .globeTileEngineUrl((x, y, l) => 
-                `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/500m/${l}/${y}/${x}.jpg`
-            )
-            .globeTileEngineMaxZoom(8) // NASA's high-res limit
-            .showAtmosphere(true)
-            .atmosphereColor('#3a228a')
-            .atmosphereDayLightIntensity(1.5);
-
-        // STARRY BACKGROUND
-        const scene = new THREE.Scene();
-        scene.add(World);
-
-        const starGeometry = new THREE.SphereGeometry(900, 64, 64);
-        const starMaterial = new THREE.MeshBasicMaterial({
-            map: new THREE.TextureLoader().load('https://unpkg.com/three-globe/example/img/night-sky.png'),
-            side: THREE.BackSide
-        });
-        scene.add(new THREE.Mesh(starGeometry, starMaterial));
-
-        // LIGHTING
-        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-        sun.position.set(1, 1, 1);
-        scene.add(sun);
-
-        // RENDERER
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('globeViz').appendChild(renderer.domElement);
-
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-        camera.position.z = 400;
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.rotateSpeed = 0.5;
-
-        // ANIMATION LOOP
-        function animate() {
-            World.rotation.y += 0.001; // Auto-spin
-            controls.update();
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
-        }
-        animate();
-
-        // HIDE LOADER WHEN READY
-        window.onload = () => {
-            document.getElementById('status').innerText = 'STABLE';
-            const loader = document.getElementById('loader');
-            loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 1500);
-        };
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
-</body>
-</html>
-
+// Resizing logic for mobile responsiveness
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
