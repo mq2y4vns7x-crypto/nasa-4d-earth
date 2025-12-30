@@ -1,146 +1,97 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NASA OnEarth 4D Engine</title>
-
+    <title>NASA 4D: Hyper-Access</title>
     <script src="https://unpkg.com/three"></script>
     <script src="https://unpkg.com/three-globe"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-
     <style>
-        body { 
-            margin: 0; 
-            background: radial-gradient(circle at center, #001529 0%, #000 100%); 
-            overflow: hidden; 
-            color: #4af;
-            font-family: 'Courier New', Courier, monospace;
-        }
-
-        /* The Heads-Up Display (HUD) */
-        #hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none; /* Allows you to click the globe through the text */
-            z-index: 10;
-        }
-
-        .data-label { font-size: 10px; opacity: 0.6; letter-spacing: 2px; margin-top: 10px;}
-        .data-value { font-size: 16px; font-weight: bold; color: #fff; }
-
-        /* The Loading Screen - Hides the black screen while NASA data loads */
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
         #loader {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            transition: opacity 1s ease;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #4af; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 1000;
         }
-
-        .spinner {
-            width: 50px; height: 50px;
-            border: 3px solid rgba(68, 170, 255, 0.2);
-            border-top: 3px solid #4af;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #glitch-text { font-size: 14px; color: #4af; text-transform: uppercase; }
+        #bar-container { width: 200px; height: 2px; background: #111; margin-top: 15px; }
+        #bar { width: 0%; height: 100%; background: #4af; }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px; letter-spacing: 3px;">INITIALIZING GIBS FEED...</p>
-    </div>
+<div id="loader">
+    <div id="glitch-text">ESTABLISHING_LINK</div>
+    <div id="bar-container"><div id="bar"></div></div>
+    <div id="counter" style="font-size: 10px; margin-top: 10px;">CYCLE: 0</div>
+</div>
 
-    <div id="hud">
-        <div class="data-label">SYSTEM_ID</div>
-        <div class="data-value">NASA_ONEARTH_v2.9.2</div>
-        <div class="data-label">LAYER_TYPE</div>
-        <div class="data-value">BLUE_MARBLE_TRUE_COLOR</div>
-        <div class="data-label">STATUS</div>
-        <div class="data-value" id="status">CONNECTING...</div>
-    </div>
+<div id="globeViz"></div>
 
-    <div id="globeViz"></div>
+<script>
+    const textBox = document.getElementById('glitch-text');
+    const counterBox = document.getElementById('counter');
+    const bar = document.getElementById('bar');
+    
+    let cycles = 0;
+    const maxCycles = 100; // Total attempts in 1 second
 
-    <script>
-        // Set up the 3D Globe
-        const World = new ThreeGlobe()
-            /* TILE ENGINE LOGIC: 
-               This is the secret from the NASA GitHub. Instead of one big image, 
-               it calculates which 512x512 tile to grab based on where you are looking.
-            */
-            .globeTileEngineUrl((x, y, l) => 
-                `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/default/500m/${l}/${y}/${x}.jpg`
-            )
-            .showAtmosphere(true)
-            .atmosphereColor('#3a228a')
-            .atmosphereDayLightIntensity(1.5);
+    // Initialize the Globe
+    const World = new ThreeGlobe()
+        .showAtmosphere(true)
+        .atmosphereColor('#4af');
 
-        // Setup the Three.js Scene
-        const scene = new THREE.Scene();
-        scene.add(World);
+    // HIGH-SPEED LOOP (100 times per second)
+    const hyperLoop = setInterval(() => {
+        cycles++;
+        counterBox.innerText = `CYCLE: ${cycles}`;
+        bar.style.width = `${cycles}%`;
 
-        // Add Stars to the background
-        const starGeo = new THREE.SphereGeometry(800, 64, 64);
-        const starMat = new THREE.MeshBasicMaterial({
-            map: new THREE.TextureLoader().load('https://unpkg.com/three-globe/example/img/night-sky.png'),
-            side: THREE.BackSide
-        });
-        scene.add(new THREE.Mesh(starGeo, starMat));
-
-        // Lighting (The Sun)
-        scene.add(new THREE.AmbientLight(0xbbbbbb, 1));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-        sun.position.set(1, 1, 1);
-        scene.add(sun);
-
-        // Setup Renderer
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('globeViz').appendChild(renderer.domElement);
-
-        // Camera and Controls
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-        camera.position.z = 400;
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.rotateSpeed = 0.6;
-
-        // 4D Animation Loop
-        function animate() {
-            World.rotation.y += 0.001; // Constant 4D spin
-            controls.update();
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
+        // At specific cycle counts, we "inject" new data attempts
+        if (cycles === 10) {
+            textBox.innerText = "BYPASSING_NASA_FIREWALL...";
+            World.globeTileEngineUrl((x, y, l) => `https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/500m/${l}/${y}/${x}.jpg`);
         }
-        animate();
+        
+        if (cycles === 40) {
+            textBox.innerText = "INJECTING_TOPOLOGY_VECTORS...";
+            World.bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png');
+        }
 
-        // Handle Resizing
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        if (cycles === 70) {
+            textBox.innerText = "STITCHING_VISUAL_LAYERS...";
+            // If the Tile Engine failed, this forces a backup map immediately
+            World.globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
+        }
 
-        // Hide Loader once textures start appearing
-        window.onload = () => {
-            document.getElementById('status').innerText = 'LIVE_FEED_STABLE';
-            const loader = document.getElementById('loader');
-            loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 1000);
-        };
-    </script>
+        if (cycles >= maxCycles) {
+            textBox.innerText = "LINK_ESTABLISHED";
+            clearInterval(hyperLoop);
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').remove(), 500);
+            }, 200);
+        }
+    }, 10); // 10 milliseconds = 100 times per second
+
+    // Standard Setup
+    const scene = new THREE.Scene();
+    scene.add(World);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('globeViz').appendChild(renderer.domElement);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 2000);
+    camera.position.z = 400;
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    function animate() {
+        World.rotation.y += 0.0015;
+        controls.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+    }
+    animate();
+</script>
 </body>
 </html>
