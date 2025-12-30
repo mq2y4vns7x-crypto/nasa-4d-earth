@@ -1,55 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NASA 4D Ultimate</title>
+    <title>NASA GIBS 4D Professional</title>
     <script src="https://unpkg.com/three"></script>
     <script src="https://unpkg.com/three-globe"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         body { margin: 0; background: #000; overflow: hidden; }
-        #ui { position: absolute; top: 15px; width: 100%; text-align: center; color: #aaa; font-family: 'Segoe UI', sans-serif; pointer-events: none; letter-spacing: 2px; text-transform: uppercase; font-size: 10px; }
+        #overlay { position: absolute; bottom: 10px; right: 10px; color: #4af; font-family: monospace; font-size: 10px; }
     </style>
 </head>
 <body>
-    <div id="ui">NASA GIBS Data Feed • High-Resolution 4D</div>
+    <div id="overlay">DATA SOURCE: NASA GIBS ON-EARTH ENGINE</div>
     <div id="globeViz"></div>
 
     <script>
-        // ASSETS FROM NASA GIBS REPOS
-        const MAP = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
-        const BUMP = 'https://unpkg.com/three-globe/example/img/earth-topology.png';
-        const STARS = 'https://unpkg.com/three-globe/example/img/night-sky.png';
+        // COMBINED NASA ASSETS
+        const textures = {
+            day: 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
+            night: 'https://unpkg.com/three-globe/example/img/earth-night.jpg',
+            topo: 'https://unpkg.com/three-globe/example/img/earth-topology.png',
+            stars: 'https://unpkg.com/three-globe/example/img/night-sky.png'
+        };
 
         const World = new ThreeGlobe()
-            .globeImageUrl(MAP)
-            .bumpImageUrl(BUMP)
+            .globeImageUrl(textures.day)
+            .bumpImageUrl(textures.topo) // Mountains from NASA Topology data
             .showAtmosphere(true)
-            .atmosphereColor('#4a90e2') // A more realistic sky blue
+            .atmosphereColor('#3a228a')
             .atmosphereDayLightIntensity(1.5);
 
+        // SCENE SETUP
         const scene = new THREE.Scene();
-        
-        // 1. ADD STARS (Background Layer)
-        const starGeometry = new THREE.SphereGeometry(900, 64, 64);
-        const starMaterial = new THREE.MeshBasicMaterial({
-            map: new THREE.TextureLoader().load(STARS),
+        scene.add(World);
+
+        // STARS BACKGROUND (From NASA Worldview style)
+        const starGeo = new THREE.SphereGeometry(800, 64, 64);
+        const starMat = new THREE.MeshBasicMaterial({
+            map: new THREE.TextureLoader().load(textures.stars),
             side: THREE.BackSide
         });
-        const starField = new THREE.Mesh(starGeometry, starMaterial);
-        scene.add(starField);
+        scene.add(new THREE.Mesh(starGeo, starMat));
 
-        // 2. ADD GLOBE
-        scene.add(World);
-        
-        // 3. LIGHTING (The Sun)
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(ambientLight);
+        // LIGHTING (The "Sun")
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7)); // General visibility
+        const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+        sun.position.set(1, 1, 1); 
+        scene.add(sun);
 
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        sunLight.position.set(1, 1, 1); // Shines from the side to show off mountain shadows
-        scene.add(sunLight);
-
-        // RENDERER SETUP
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -60,17 +58,17 @@
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.rotateSpeed = 0.5;
 
+        // ANIMATION LOOP
         function animate() {
-            World.rotation.y += 0.0008; // Continuous 4D rotation
+            World.rotation.y += 0.001; // The "4D" spin
             controls.update();
             renderer.render(scene, camera);
             requestAnimationFrame(animate);
         }
         animate();
 
+        // Responsive Resizing
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
